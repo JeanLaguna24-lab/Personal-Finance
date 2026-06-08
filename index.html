@@ -140,6 +140,7 @@ textarea{resize:vertical;font-family:monospace;font-size:11px;min-height:64px}
     <div class="nav-item" onclick="showTab('transacciones',this)"><span class="nav-icon">↕</span> Transacciones</div>
     <div class="nav-item" onclick="showTab('presupuesto',this)"><span class="nav-icon">◎</span> Presupuesto</div>
     <div class="nav-item" onclick="showTab('proyeccion',this)"><span class="nav-icon">↗</span> Proyección Junio</div>
+    <div class="nav-item" onclick="showTab('analisis',this)"><span class="nav-icon">📊</span> Análisis</div>
     <div class="nav-item" onclick="showTab('deudas',this)"><span class="nav-icon">⚠</span> Deudas &amp; Cobros</div>
   </nav>
   <div class="sidebar-footer">
@@ -376,32 +377,123 @@ textarea{resize:vertical;font-family:monospace;font-size:11px;min-height:64px}
   </div>
 </div>
 
+<!-- ANÁLISIS -->
+<div class="section" id="sec-analisis">
+  <div class="page-hdr">
+    <div><div class="page-title">Análisis de gastos</div><div class="page-sub">Patrones de consumo y métricas del mes actual</div></div>
+    <select id="analisis-mes" onchange="renderAnalisis()" style="width:auto;font-size:12px;padding:6px 10px;align-self:center">
+      <option value="current">Mes actual</option>
+      <option value="last">Mes anterior</option>
+      <option value="all">Todo el historial</option>
+    </select>
+  </div>
+
+  <!-- Métricas rápidas -->
+  <div class="metrics m4" id="analisis-metrics"></div>
+
+  <div class="grid2" style="margin-bottom:14px">
+    <!-- Top categorías -->
+    <div class="card">
+      <div class="card-title">🏆 Top categorías por gasto</div>
+      <div id="analisis-cats"></div>
+    </div>
+    <!-- Top descripciones -->
+    <div class="card">
+      <div class="card-title">🔍 Top gastos por descripción</div>
+      <div id="analisis-descs"></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:14px">
+    <!-- Gráfico tendencia -->
+    <div class="card">
+      <div class="card-title">Tendencia de gastos por categoría</div>
+      <div style="position:relative;height:220px"><canvas id="chartAnalisisCat"></canvas></div>
+    </div>
+    <!-- Gráfico día de semana -->
+    <div class="card">
+      <div class="card-title">Gasto promedio por día de la semana</div>
+      <div style="position:relative;height:220px"><canvas id="chartAnalisisDia"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 Gasto diario acumulado del mes</div>
+    <div style="position:relative;height:200px"><canvas id="chartAnalisisDiario"></canvas></div>
+  </div>
+</div>
+
 <!-- DEUDAS & COBROS -->
 <div class="section" id="sec-deudas">
   <div class="page-hdr"><div><div class="page-title">Deudas &amp; Cobros</div><div class="page-sub">Lo que debés y lo que te deben — cambios se sincronizan automáticamente</div></div></div>
-  <div class="grid2">
+
+  <!-- COBROS -->
+  <div class="grid2" style="margin-bottom:14px">
     <div class="card">
       <div class="card-hdr">
         <div class="card-title" style="margin:0">💰 Cuentas por cobrar</div>
         <span class="badge b-green" id="total-cobrar-badge">Total: US$ —</span>
       </div>
-      <table class="tbl">
+      <table class="tbl" style="margin-bottom:14px">
         <thead><tr><th>Concepto</th><th>Monto</th><th>Cuotas</th><th>Estado</th><th></th></tr></thead>
         <tbody id="cobrar-body"></tbody>
       </table>
-      <div class="alert a-success" style="margin-top:12px">Al cobrar, marcá como recibido — se actualiza el patrimonio y sincroniza con Sheets.</div>
+      <!-- Formulario nuevo cobro -->
+      <div style="border-top:0.5px solid var(--border);padding-top:14px">
+        <div class="card-title">+ Nueva cuenta por cobrar</div>
+        <div class="form-row form-group">
+          <div><label>Concepto</label><input type="text" id="new-cobrar-concepto" placeholder="Ej: Préstamo Juan"></div>
+          <div><label>Monto</label><input type="number" id="new-cobrar-monto" placeholder="0"></div>
+        </div>
+        <div class="form-row form-group">
+          <div><label>Moneda</label>
+            <select id="new-cobrar-moneda"><option>USD</option><option>UYU</option><option>PEN</option></select>
+          </div>
+          <div><label>Tipo de cuota</label>
+            <select id="new-cobrar-tipo"><option value="única">Única</option><option value="mensual">Mensual</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cantidad de cuotas</label>
+          <input type="number" id="new-cobrar-cuotas" placeholder="1" min="1" value="1">
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="addCobrar()">+ Agregar cobro</button>
+      </div>
     </div>
+
+    <!-- DEUDAS -->
     <div class="card">
       <div class="card-hdr">
         <div class="card-title" style="margin:0">🔴 Cuentas por pagar</div>
         <span class="badge b-red" id="total-deber-badge">Total: US$ —</span>
       </div>
-      <table class="tbl">
+      <table class="tbl" style="margin-bottom:14px">
         <thead><tr><th>Concepto</th><th>Monto</th><th>Tipo</th><th>Estado</th><th></th></tr></thead>
         <tbody id="deber-body"></tbody>
       </table>
+      <!-- Formulario nueva deuda -->
+      <div style="border-top:0.5px solid var(--border);padding-top:14px">
+        <div class="card-title">+ Nueva deuda</div>
+        <div class="form-row form-group">
+          <div><label>Concepto</label><input type="text" id="new-deuda-nombre" placeholder="Ej: Cuota carro julio"></div>
+          <div><label>Monto</label><input type="number" id="new-deuda-monto" placeholder="0"></div>
+        </div>
+        <div class="form-row form-group">
+          <div><label>Moneda</label>
+            <select id="new-deuda-moneda"><option>USD</option><option>UYU</option><option>PEN</option></select>
+          </div>
+          <div><label>Tipo</label>
+            <select id="new-deuda-tipo">
+              <option>Tarjeta</option><option>Carro</option><option>Viaje</option>
+              <option>Préstamo</option><option>Servicios</option><option>Otros</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="addDeuda()">+ Agregar deuda</button>
+      </div>
     </div>
   </div>
+  <div class="alert a-success">Al cobrar o pagar, marcá el item correspondiente — el patrimonio se actualiza y sincroniza con Sheets automáticamente.</div>
 </div>
 
 </main>
@@ -558,6 +650,7 @@ function showTab(id, el) {
   if(id==='transacciones'){ renderTxList(); renderCatSelect(); renderCatList(); }
   if(id==='presupuesto'){ renderBudgetForm(); renderBudgetBars(); }
   if(id==='proyeccion') renderProj();
+  if(id==='analisis') renderAnalisis();
   if(id==='deudas') renderDeudas();
 }
 function renderAll(){ renderPatrimonio(); renderTxList(); renderCatSelect(); renderCatList(); renderBudgetForm(); renderBudgetBars(); }
@@ -749,13 +842,31 @@ function renderDeudas(){
   document.getElementById('cobrar-body').innerHTML=cobrar.map(c=>{
     const sym=c.moneda==='USD'?'US$':c.moneda==='UYU'?'$U':'S/';
     const rest=c.cuotasTotales-c.cuotasCobradas;
-    return `<tr><td>${c.concepto}</td><td class="td2">${sym} ${c.monto.toLocaleString('es-UY',{minimumFractionDigits:2})}${c.tipoCuota==='mensual'?' /mes':''}</td><td class="td3">${rest} de ${c.cuotasTotales} pend.</td><td>${rest<=0?'<span class="badge b-green">Cobrado</span>':'<span class="badge b-amber">Pendiente</span>'}</td><td>${rest>0?`<button class="btn btn-sm" onclick="cobrarCuota(${c.id})" style="background:var(--green-dim);color:var(--green);border-color:transparent">✓ Cobrar</button>`:''}</td></tr>`;
+    return `<tr>
+      <td>${c.concepto}</td>
+      <td class="td2">${sym} ${c.monto.toLocaleString('es-UY',{minimumFractionDigits:2})}${c.tipoCuota==='mensual'?' /mes':''}</td>
+      <td class="td3">${rest} de ${c.cuotasTotales} pend.</td>
+      <td>${rest<=0?'<span class="badge b-green">Cobrado</span>':'<span class="badge b-amber">Pendiente</span>'}</td>
+      <td style="display:flex;gap:4px;justify-content:flex-end">
+        ${rest>0?`<button class="btn btn-sm" onclick="cobrarCuota(${c.id})" style="background:var(--green-dim);color:var(--green);border-color:transparent">✓</button>`:''}
+        <button class="btn btn-sm btn-ghost" onclick="deleteCobrar(${c.id})" style="color:var(--red)">✕</button>
+      </td>
+    </tr>`;
   }).join('');
   const td=pasivos.filter(p=>!p.pagado).reduce((a,p)=>a+toUSD(p.monto,p.moneda),0);
   document.getElementById('total-deber-badge').textContent='Total: US$ '+Math.round(td).toLocaleString('es-UY');
   document.getElementById('deber-body').innerHTML=pasivos.map(p=>{
     const sym=p.moneda==='USD'?'US$':p.moneda==='UYU'?'$U':'S/';
-    return `<tr><td>${p.nombre}</td><td class="col-red">${sym} ${p.monto.toLocaleString('es-UY',{minimumFractionDigits:2})}</td><td class="td3">${p.tipo}</td><td>${p.pagado?'<span class="badge b-green">Pagado</span>':'<span class="badge b-red">Pendiente</span>'}</td><td>${!p.pagado?`<button class="btn btn-sm" onclick="pagarDeuda(${p.id})" style="background:var(--green-dim);color:var(--green);border-color:transparent">✓ Pagar</button>`:''}</td></tr>`;
+    return `<tr>
+      <td>${p.nombre}</td>
+      <td class="col-red">${sym} ${p.monto.toLocaleString('es-UY',{minimumFractionDigits:2})}</td>
+      <td class="td3">${p.tipo}</td>
+      <td>${p.pagado?'<span class="badge b-green">Pagado</span>':'<span class="badge b-red">Pendiente</span>'}</td>
+      <td style="display:flex;gap:4px;justify-content:flex-end">
+        ${!p.pagado?`<button class="btn btn-sm" onclick="pagarDeuda(${p.id})" style="background:var(--green-dim);color:var(--green);border-color:transparent">✓</button>`:''}
+        <button class="btn btn-sm btn-ghost" onclick="deleteDeuda(${p.id})" style="color:var(--red)">✕</button>
+      </td>
+    </tr>`;
   }).join('');
 }
 async function cobrarCuota(id){
@@ -765,6 +876,175 @@ async function cobrarCuota(id){
 }
 async function pagarDeuda(id){
   const item=pasivos.find(p=>p.id===id); if(item){item.pagado=true;renderDeudas();renderPatrimonio();await saveDeudasS();}
+}
+
+// ══════════════════════════
+// AGREGAR COBROS Y DEUDAS
+// ══════════════════════════
+let nextCobrarId = 100;
+let nextDeudasId = 100;
+
+async function addCobrar() {
+  const concepto = document.getElementById('new-cobrar-concepto').value.trim();
+  const monto = parseFloat(document.getElementById('new-cobrar-monto').value);
+  const moneda = document.getElementById('new-cobrar-moneda').value;
+  const tipoCuota = document.getElementById('new-cobrar-tipo').value;
+  const cuotas = parseInt(document.getElementById('new-cobrar-cuotas').value) || 1;
+  if (!concepto || !monto || monto <= 0) return;
+  const maxId = cobrar.length ? Math.max(...cobrar.map(c=>c.id)) : 0;
+  cobrar.push({ id: maxId+1, concepto, monto, moneda, cuotasTotales: cuotas, cuotasCobradas: 0, tipoCuota, pendiente: true });
+  document.getElementById('new-cobrar-concepto').value = '';
+  document.getElementById('new-cobrar-monto').value = '';
+  document.getElementById('new-cobrar-cuotas').value = '1';
+  renderDeudas(); renderPatrimonio();
+  await saveCobrarS();
+}
+
+async function deleteCobrar(id) {
+  cobrar = cobrar.filter(c => c.id !== id);
+  renderDeudas(); renderPatrimonio();
+  await saveCobrarS();
+}
+
+async function addDeuda() {
+  const nombre = document.getElementById('new-deuda-nombre').value.trim();
+  const monto = parseFloat(document.getElementById('new-deuda-monto').value);
+  const moneda = document.getElementById('new-deuda-moneda').value;
+  const tipo = document.getElementById('new-deuda-tipo').value;
+  if (!nombre || !monto || monto <= 0) return;
+  const maxId = pasivos.length ? Math.max(...pasivos.map(p=>p.id)) : 0;
+  pasivos.push({ id: maxId+1, nombre, monto, moneda, tipo, pagado: false });
+  document.getElementById('new-deuda-nombre').value = '';
+  document.getElementById('new-deuda-monto').value = '';
+  renderDeudas(); renderPatrimonio();
+  await saveDeudasS();
+}
+
+async function deleteDeuda(id) {
+  pasivos = pasivos.filter(p => p.id !== id);
+  renderDeudas(); renderPatrimonio();
+  await saveDeudasS();
+}
+
+// ══════════════════════════
+// ANÁLISIS
+// ══════════════════════════
+let chartAnCat=null, chartAnDia=null, chartAnDiario=null;
+
+function getAnalisisTx() {
+  const sel = document.getElementById('analisis-mes')?.value || 'current';
+  const now = new Date();
+  return transactions.filter(t => {
+    if (t.tipo !== 'gasto' || t.yaDescontado) return false;
+    const d = new Date(t.fecha + 'T00:00:00');
+    if (sel === 'current') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    if (sel === 'last') { const lm=new Date(now.getFullYear(),now.getMonth()-1,1); return d.getMonth()===lm.getMonth()&&d.getFullYear()===lm.getFullYear(); }
+    return true;
+  });
+}
+
+function toUYUamt(t) { return t.moneda==='UYU'?t.monto:t.moneda==='USD'?t.monto*TC.USD_UYU:(t.monto/TC.USD_PEN)*TC.USD_UYU; }
+
+function renderAnalisis() {
+  const txs = getAnalisisTx();
+  const totalGasto = txs.reduce((a,t)=>a+toUYUamt(t),0);
+  const totalIng = transactions.filter(t=>{
+    if(t.tipo!=='ingreso') return false;
+    const sel=document.getElementById('analisis-mes')?.value||'current';
+    const now=new Date(); const d=new Date(t.fecha+'T00:00:00');
+    if(sel==='current') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    if(sel==='last'){const lm=new Date(now.getFullYear(),now.getMonth()-1,1);return d.getMonth()===lm.getMonth()&&d.getFullYear()===lm.getFullYear();}
+    return true;
+  }).reduce((a,t)=>a+toUYUamt(t),0);
+  const txCount = txs.length;
+  const avgTx = txCount ? totalGasto/txCount : 0;
+
+  // Métricas
+  document.getElementById('analisis-metrics').innerHTML = `
+    <div class="metric" style="--accent:var(--red)"><div class="metric-label">Total gastado</div><div class="metric-value col-red">$U ${Math.round(totalGasto).toLocaleString('es-UY')}</div><div class="metric-sub">${txCount} transacciones</div></div>
+    <div class="metric" style="--accent:var(--green)"><div class="metric-label">Total ingresos</div><div class="metric-value col-green">$U ${Math.round(totalIng).toLocaleString('es-UY')}</div></div>
+    <div class="metric" style="--accent:var(--blue)"><div class="metric-label">Promedio por gasto</div><div class="metric-value col-blue">$U ${Math.round(avgTx).toLocaleString('es-UY')}</div></div>
+    <div class="metric" style="--accent:var(--amber)"><div class="metric-label">Tasa de ahorro</div><div class="metric-value col-amber">${totalIng>0?Math.round((totalIng-totalGasto)/totalIng*100):0}%</div></div>
+  `;
+
+  // Top categorías
+  const byCat = {};
+  txs.forEach(t => { byCat[t.cat] = (byCat[t.cat]||0) + toUYUamt(t); });
+  const sortedCats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat = sortedCats[0]?.[1] || 1;
+  document.getElementById('analisis-cats').innerHTML = sortedCats.length ? sortedCats.map(([cat,val],i)=>{
+    const pct = Math.round(val/totalGasto*100);
+    const barW = Math.round(val/maxCat*100);
+    const medals = ['🥇','🥈','🥉'];
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px">${medals[i]||'  '} ${cat}</span>
+        <span style="font-size:12px;color:var(--text2)">$U ${Math.round(val).toLocaleString('es-UY')} <span style="color:var(--text3)">(${pct}%)</span></span>
+      </div>
+      <div style="height:5px;background:var(--bg4);border-radius:3px"><div style="width:${barW}%;height:100%;background:${i===0?'var(--red)':i===1?'var(--amber)':'var(--blue)'};border-radius:3px"></div></div>
+    </div>`;
+  }).join('') : '<div class="empty">Sin gastos en el período.</div>';
+
+  // Top descripciones
+  const byDesc = {};
+  txs.forEach(t => { byDesc[t.desc] = (byDesc[t.desc]||0) + toUYUamt(t); });
+  const sortedDescs = Object.entries(byDesc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxDesc = sortedDescs[0]?.[1] || 1;
+  document.getElementById('analisis-descs').innerHTML = sortedDescs.length ? sortedDescs.map(([desc,val],i)=>{
+    const pct = Math.round(val/totalGasto*100);
+    const barW = Math.round(val/maxDesc*100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${desc}</span>
+        <span style="font-size:11px;color:var(--text2)">$U ${Math.round(val).toLocaleString('es-UY')} <span style="color:var(--text3)">(${pct}%)</span></span>
+      </div>
+      <div style="height:4px;background:var(--bg4);border-radius:2px"><div style="width:${barW}%;height:100%;background:var(--purple);border-radius:2px"></div></div>
+    </div>`;
+  }).join('') : '<div class="empty">Sin gastos en el período.</div>';
+
+  // Gráfico por categoría (doughnut)
+  const catColors = ['#f56565','#f5a623','#6b9cf4','#2dd4a0','#a78bfa','#38bdf8','#fb923c','#e879f9'];
+  if(chartAnCat)chartAnCat.destroy();
+  if(sortedCats.length) {
+    chartAnCat = new Chart(document.getElementById('chartAnalisisCat'),{type:'doughnut',
+      data:{labels:sortedCats.map(c=>c[0]),datasets:[{data:sortedCats.map(c=>Math.round(c[1])),backgroundColor:catColors,borderWidth:2,borderColor:'#161820'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{
+        legend:{position:'right',labels:{color:'#9a9490',font:{family:'DM Sans',size:11},boxWidth:12,padding:8}},
+        tooltip:{callbacks:{label:ctx=>' $U '+ctx.raw.toLocaleString('es-UY')}}}}});
+  }
+
+  // Gráfico por día de semana
+  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const byDia = [0,0,0,0,0,0,0];
+  const countDia = [0,0,0,0,0,0,0];
+  txs.forEach(t => { const d=new Date(t.fecha+'T00:00:00').getDay(); byDia[d]+=toUYUamt(t); countDia[d]++; });
+  const avgDia = byDia.map((v,i)=>countDia[i]?Math.round(v/countDia[i]):0);
+  if(chartAnDia)chartAnDia.destroy();
+  chartAnDia = new Chart(document.getElementById('chartAnalisisDia'),{type:'bar',
+    data:{labels:dias,datasets:[{label:'Gasto promedio',data:avgDia,backgroundColor:'rgba(167,139,250,0.65)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' $U '+ctx.raw.toLocaleString('es-UY')}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#9a9490',font:{size:11}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#9a9490',font:{size:11},callback:v=>'$U '+v.toLocaleString()}}}}});
+
+  // Gráfico diario acumulado del mes
+  const now2 = new Date();
+  const diasMes = new Date(now2.getFullYear(),now2.getMonth()+1,0).getDate();
+  const acumDiario = Array(diasMes).fill(0);
+  const mesActual = document.getElementById('analisis-mes')?.value==='last'
+    ? new Date(now2.getFullYear(),now2.getMonth()-1,1).getMonth()
+    : now2.getMonth();
+  txs.forEach(t => {
+    const d = new Date(t.fecha+'T00:00:00');
+    if(d.getMonth()===mesActual) acumDiario[d.getDate()-1] += toUYUamt(t);
+  });
+  // Acumular
+  for(let i=1;i<acumDiario.length;i++) acumDiario[i]+=acumDiario[i-1];
+  if(chartAnDiario)chartAnDiario.destroy();
+  chartAnDiario = new Chart(document.getElementById('chartAnDiario')||document.getElementById('chartAnalisisDiario'),{type:'line',
+    data:{labels:Array.from({length:diasMes},(_,i)=>i+1),datasets:[{label:'Gasto acumulado',data:acumDiario,borderColor:'#f56565',backgroundColor:'rgba(245,101,101,0.07)',borderWidth:2,pointRadius:2,tension:0.3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' $U '+Math.round(ctx.raw).toLocaleString('es-UY')}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#9a9490',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#9a9490',font:{size:10},callback:v=>'$U '+v.toLocaleString()}}}}});
 }
 
 // ══════════════════════════
